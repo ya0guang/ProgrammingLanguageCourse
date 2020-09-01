@@ -161,6 +161,14 @@
 ;                 ((eqv? e (car s)) (list (car s)))
 ;                 (include e (cdr s))))))
 
+; helper function to set-difference: member 
+(: member (All (A) (-> A (Listof A) (U Boolean (Listof A)))))
+(define (member e ls)
+    (cond
+        ((null? ls) #f)
+        ((equal? e (car ls)) ls)
+        (else (member e (cdr ls)))))
+
 ; set-difference
 (: set-difference (All (A) (-> (Listof A) (Listof A) (Listof A))))
 (define (set-difference s1 s2)
