@@ -6,7 +6,7 @@
      (List 'λ (List Symbol) Exp)
      (List Exp Exp)))
 
-#;
+
 (((λ (add1)
      (λ (zero)
        (add1 (add1 (add1 zero)))))
@@ -41,6 +41,8 @@
        (λ (arg) (valof body (λ (y) (if (eqv? y x) arg (env y)))))]
       [`(,rator ,rand)
        ((valof rator env) (valof rand env))])))
+
+       
 (define valof
   (λ (exp env)
     (match exp
