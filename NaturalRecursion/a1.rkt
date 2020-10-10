@@ -9,8 +9,6 @@
 
 
 ; Assignment 1
-; Author: Hongbo Chen
-; Email: hc50@iu.edu
 
 ; countdown 
 (: countdown (-> Natural (Listof Natural)))
