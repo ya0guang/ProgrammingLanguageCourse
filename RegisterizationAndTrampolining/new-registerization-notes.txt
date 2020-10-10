@@ -1,0 +1,263 @@
+;; Jason Hemann 9/3/16
+;; Registerization notes. 
+
+;; starting with a contrived example that shows off what we're after
+(define f
+  (lambda (n)
+    ((lambda (f)
+       (f n))
+     (lambda (v) v))))
+
+(f 5)
+;; we CPS it
+(define f-cps
+  (lambda (n k)
+    ((lambda (f-cps k)
+       (f-cps n k))
+     (lambda (v k) (k v))
+     k)))
+
+(f-cps 5 (lambda (v) v))
+
+;; add the apply-k
+(define apply-k
+  (lambda (k v)
+    (k v)))
+
+(define f-cps
+  (lambda (n k)
+    ((lambda (f-cps k)
+       (f-cps n k))
+     (lambda (v k) (apply-k k v))
+     k)))
+
+(f-cps 5 (lambda (v) v))
+
+;; make our continuation constructor(s) RI
+(define (empty-k)
+  (lambda (v)
+    v))
+
+(define apply-k
+  (lambda (k v)
+    (k v)))
+
+(define f-cps
+  (lambda (n k)
+    ((lambda (f-cps k)
+       (f-cps n k))
+     (lambda (v k) (apply-k k v))
+     k)))
+
+(f-cps 5 (empty-k))
+
+;; Then we change them to data-structure representations
+
+(define (empty-k)
+  `(empty-k))
+
+(define apply-k
+  (lambda (k v)
+    (match k
+      (`(empty-k) v))))
+
+(define f-cps
+  (lambda (n k)
+    ((lambda (f-cps k)
+       (f-cps n k))
+     (lambda (v k) (apply-k k v))
+     k)))
+
+(f-cps 5 (empty-k))
+
+;; Now, we're set to talk about the part that you were interested in.
+;; The idea is that we want to /linearize/ our computation.
+;; The simple calls in our serious function invocations are essentially happening simultaneously.
+;; Well, where we're going, we can't have that.
+;; We're going to be using global variables, so we can't rely on any implicit temporary space.
+;; We have to ensure our code works when we make these changes one-at-a-time
+;; To do that we've ginned up a little trick -- the let* step.
+;; This puts our code into "A-normal form". You can look it up if you want to know more.
+;; The trick is to ensure that our serious functions are invoked with exactly the same formal parameters as their definitions. So watch.
+;; We can, and will, do these one at a time.
+
+(define (empty-k)
+  `(empty-k))
+
+(define apply-k
+  (lambda (k v)
+    (match k
+      (`(empty-k) v))))
+
+(define f-cps
+  (lambda (n k)
+    ((lambda (f-cps k)
+       (f-cps n k))
+     (lambda (v k) (apply-k k v))
+     k)))
+
+(let* ((k (empty-k))
+       (n 5))
+  (f-cps n k))
+
+;; We've only done one, the invocation of f-cps in the call here. And we can test it. If we make a mistake in linearizing, we'll know immediately. And this is something we can test one step at a time.
+
+(define (empty-k)
+  `(empty-k))
+
+(define apply-k
+  (lambda (k v)
+    (match k
+      (`(empty-k) v))))
+
+(define f-cps
+  (lambda (n k)
+    ((lambda (f-cps k)
+       (f-cps n k))
+     (lambda (v k)
+       (let* ()
+	 (apply-k k v)))
+     k)))
+
+(let* ((k (empty-k))
+       (n 5))
+  (f-cps n k))
+
+;; the call to apply-k already uses the correct variable names, so this one's easy. I actually want to do the empty let* here, though, because it leaves me in the right place for our next move. Do note though that the *only* variables we'll have to put in a let* binding are those that aren't *already* exactly the formal parameters to the function that's being invoked. This means we don't end up unnecessarily setting registers we don't need to -- which is neat. And we've got one last linearization to do.
+
+(define (empty-k)
+  `(empty-k))
+
+(define apply-k
+  (lambda (k v)
+    (match k
+      (`(empty-k) v))))
+
+(define f-cps
+  (lambda (n k)
+    ((lambda (f-cps k)
+       (f-cps n k))
+     (lambda (v k)
+       (let* ()
+	 (apply-k k v)))
+     k)))
+
+(let* ((k (empty-k))
+       (n 5))
+  (f-cps n k))
+
+;; The body of that (lambda (n k) ...) is an application of a serious function. So we can linearize it like we would any other one.
+
+(define (empty-k)
+  `(empty-k))
+
+(define apply-k
+  (lambda (k v)
+    (match k
+      (`(empty-k) v))))
+
+(define f-cps
+  (lambda (n k)
+    (let* ((f-cps (lambda (v k)
+		    (let* ()
+		      (apply-k k v)))))
+      ((lambda (f-cps k)
+	 (f-cps n k))
+       f-cps
+       k))))
+
+(let* ((k (empty-k))
+       (n 5))
+  (f-cps n k))
+
+;; Now the function (lambda (f-cps k) (f-cps n k)) is taking formal parameters f-cps and k as arguments.
+
+;; We can now construct global registers (for everything but f-cps, because the define is in some sense doing that for us*).
+;; And with those registers, we'll no longer need local variables. We can instead of let*-binding local variables, we can set! global ones. 
+;; This step is still fraught with peril. If you like, you can remove each local variable one at a time. If you make mistakes, this might help limit the places that those could occur.
+;; But we'll just get'em all at once
+(define k 'hukarz)
+(define v 'hukarz)
+(define n 'hukarz)
+
+(define (empty-k) `(empty-k))
+
+(define apply-k
+  (lambda ()  ;#(k v)
+    (match k
+      (`(empty-k) v))))
+
+(define f-cps
+  (lambda () #;(n k)
+    (begin
+     (set! f-cps (lambda () #;(v k)
+		   (begin
+		    (apply-k))))
+     ((lambda () #;(f-cps k)
+	(f-cps))))))
+
+(begin
+ (set! k (empty-k))
+ (set! n 5)
+ (f-cps))
+
+
+;; To break this down into steps, our serious functions become functions of no arguments
+;; BTW, ;# is syntax for an s-expression comment
+;; our let* expressions become begin blocks, with the body of the let* expression being the last things in that begin block. All the bindings in the let* blocks become set! statements.
+;; We could call this good and done and complete and submit it.
+
+;; But it's neat that there's now some room for optimizations.
+;; So far, we've done no obvious optimizing of what was obviously sub-optimal code.
+;; But that ((lambda () ...)), the immediate application of a thunk, that we can optimize away. 
+
+(define k 'hukarz)
+(define v 'hukarz)
+(define n 'hukarz)
+
+(define (empty-k) `(empty-k))
+
+(define apply-k
+  (lambda ()  ;#(k v)
+    (match k
+      (`(empty-k) v))))
+
+(define f-cps
+  (lambda () #;(n k)
+    (begin
+     (set! f-cps (lambda () #;(v k)
+		   (begin
+		    (apply-k))))
+     (f-cps))))
+
+(begin
+ (set! k (empty-k))
+ (set! n 5)
+ (f-cps))
+
+;; And so in the body, we re-define f-cps, and then invoke this new definition. We can improve that as well.
+
+(define k 'hukarz)
+(define v 'hukarz)
+(define n 'hukarz)
+
+(define (empty-k) `(empty-k))
+
+(define apply-k
+  (lambda ()  ;#(k v)
+    (match k
+      (`(empty-k) v))))
+
+(define f-cps
+  (lambda () #;(n k)
+    (begin
+     (apply-k))))
+
+(begin
+ (set! k (empty-k))
+ (set! n 5)
+ (f-cps))
+
+;; There's obviously ways to improve this code further, but in some sense a lot of those are the results of *really* special cases--when we have only one continuation, and we don't do a whole lot of anything.
+
+;; It bears mentioning that we relied on some special properties to make this work. The inner, anonymous recursion used exactly the name of the global function so we could more easily see how to eliminate f-cps. And we were lucky we took n as an external argument. If we provided 5 inside the anonymous recursion, we wouldn't have been so lucky in our "optimization". Precisely when these sort of optimizations on registerized code are applicable I'm not entirely sure, and recognizing how and when to perform the required transformations on code (lambda lifting/dropping) if and only if they're required is also of interest. As far as I know, open research questions. But there ya go. 
