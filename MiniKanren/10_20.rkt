@@ -213,7 +213,7 @@
                      (reify-s (cdr t) r))]
         [else r]))))
 
-#;
+
 (let ([x (Var 'x)]
       [y (Var 'y)]
       [z (Var 'z)]
@@ -221,6 +221,24 @@
   (let ([σ `((,x . 42) (,y . dog))])
     ((reify `((,x . (,w . ,z)) ((,y . ,y) . (,w . cat))))
            σ)))
+
+(let ([x (Var 'x)]
+      [y (Var 'y)]
+      [z (Var 'z)]
+      [w (Var 'z)])
+  (let ([σ `((,x . 42) (,y . dog))])
+    (walk* `((,x . (,w . ,z)) ((,y . ,y) . (,w . cat))) σ)))
+
+(let ([x (Var 'x)]
+      [y (Var 'y)]
+      [z (Var 'z)]
+      [w (Var 'z)])
+  (let ([σ `((,x . 42) (,y . dog))]
+        [t `((,x . (,w . ,z)) ((,y . ,y) . (,w . cat)))])
+    (let ([t (walk* t σ)]) 
+      (reify-s t empty-s))))
+
+
 
 (define-syntax run
   (syntax-rules ()
@@ -245,7 +263,7 @@
           (disj₂ (conj₂ (≡ x 'cat) (≡ y 42))
                  (conj₂ (≡ x 'dog) (≡ x 'cat))))
         empty-s))
-
+#; 
 (run 2 (x y z)
   (disj₂ (conj₂ (≡ x 'cat) (≡ y 42))
          (conj₂ (≡ y 'dog) (≡ x 'budgie))))

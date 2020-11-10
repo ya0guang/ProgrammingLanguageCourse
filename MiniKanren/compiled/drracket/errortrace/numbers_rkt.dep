@@ -1,0 +1,1 @@
+("7.8" racket ("25dda5b79e446ab1e021e6c8a1cd1e16865edddb" . "d06033c9bb9f503775cdbcf4b0fd905a89e32517") #"/home/ya0guang/Code/ProgrammingLanguageCourse/MiniKanren/mk.rkt" (collects #"errortrace" #"errortrace-key.rkt") (collects #"racket" #"main.rkt") (collects #"racket" #"runtime-config.rkt"))

@@ -42,6 +42,20 @@
          [else t])]
       [else t])))
 
+#; 
+(walk (Var 'x) `((,(Var 'x) . 42) (,(Var 'y) . ,(Var 'x)) (,(Var 'z) . cat)))
+
+; this will always yield (Var 'x) since there these two (Var 'x) are different!!!!!!!
+
+#; 
+(let ([x (Var 'x)]
+      [y (Var 'y)]
+      [z (Var 'z)]
+      [q (Var 'q)])
+    (walk z `((,x . 42) (,y . x) (,z . cat))))
+
+; (walk (Var 'x) `((,x . 42) (,y . x) (,z . cat)))
+
 (: occurs? (→ Var Term Substitution
               Boolean))
 (define occurs?
@@ -71,7 +85,8 @@
       [z (Var 'z)]
       [q (Var 'q)])
   (unify `(,x . cat) `(42 . ,y) empty-s))
-#;
+
+#; 
 (let ([x (Var 'x)]
       [y (Var 'y)]
       [z (Var 'z)]
@@ -111,6 +126,12 @@
       [(pair? $) (cons (car $) (take (cdr $) (sub1 n)))]
       [else (take ($) n)])))
 
+#;
+(let ([x₁ (Var 'x)]
+      [x₂ (Var 'x)])
+  (take ((≡ x₁ 'cat) empty-s) 1))
+
+
 (: append$ (→ Stream Stream
               Stream))
 (define append$
@@ -143,6 +164,7 @@
     (λ (σ)
       (append-map$ g₂ (g₁ σ)))))
 
+
 (let ([x (Var 'x)]
       [y (Var 'y)]
       [z (Var 'z)]
@@ -150,8 +172,10 @@
   (take ((disj₂ (conj₂ (≡ x 'cat) (≡ y 42))
                 (conj₂ (≡ x 'dog) (≡ x 'cat)))
          empty-s)
-        2))
+        10))
 
 
 #;
 (take (append$ (nats 0) (nats 0)) 10)
+
+(let ([x (Var 'x)]) ((≡ x 'cat) empty-s))
