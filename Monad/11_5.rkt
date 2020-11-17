@@ -1,5 +1,5 @@
 #lang racket
-(require "monads.rkt")
+(require "monads_class.rkt")
 
 (define fib/state
   (λ (n)
@@ -160,7 +160,9 @@ writer monad (log)
                                      (bind-writer (tell `(fib ,n is ,(+ r₁ r₂)))
                                                   (λ (_) (inj-writer (+ r₁ r₂))))))))])))
 
-#;
+
+((run-state (fib/state 5)) '())
+
 (run-writer
  (fib 5))
 
@@ -188,6 +190,6 @@ continuation monad
   (fib/k 5))
  (λ (v) v))
 
-((run-k
-  (callcc (λ (k) (bind-k (inj-k ())))))
- (λ (v) v))
+; ((run-k
+;   (callcc (λ (k) (bind-k (inj-k ())))))
+;  (λ (v) v))

@@ -1,5 +1,5 @@
 #lang racket
-(require "monads.rkt")
+(require "monads_class.rkt")
 
 #| Eugenio Moggi, Notions of computation and monads |#
 #| Phil Wadler |#

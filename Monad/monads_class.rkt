@@ -1,5 +1,5 @@
 #lang typed/racket/no-check
-;#lang typed/racket
+; #lang typed/racket
 
 (provide (all-defined-out))
 
@@ -28,10 +28,10 @@
   ([log : (Listof W)]
    [a : A]))
 
-(: run-writer (All (W A) (-> (Writer W A) (Pair (Listof W) A))))
+(: run-writer (All (W A) (-> (Writer W A) (Pair A (Listof W)))))
 (define (run-writer ma)
   (match ma
-    [(Writer log a) (cons log a)]))
+    [(Writer log a) (cons a log)]))
 
 (: inj-writer (All (W A) (-> A (Writer W A))))
 (define (inj-writer a)
@@ -45,7 +45,7 @@
 (define (bind-writer ma f)
   (match ma
     [(Writer la a) (match (run-writer (f a))
-                     [(cons lb b) (Writer (append la lb) b)])]))
+                     [(cons b lb) (Writer (append la lb) b)])]))
 
 (: pass (All (W A) (-> (Writer W A) (-> (Listof W) (Listof W)) (Writer W A))))
 (define (pass ma f)
@@ -55,23 +55,23 @@
 (: listen (All (W A) (-> (Writer W A) (Writer W (Pair (Listof W) A)))))
 (define (listen ma)
   (match ma
-    [(Writer la a) (Writer la (cons la a))]))
+    [(Writer la a) (Writer la (cons a la))]))
 
 (struct (Store A) State
-  ([run-state : (-> Store (Pair Store A))]))
+  ([run-state : (-> Store (Pair A Store))]))
 
 (: inj-state (All (S A) (-> A (State S A))))
 (define (inj-state a)
-  (State (λ ([s : S]) (cons s a))))
+  (State (λ ([s : S]) (cons a s))))
 
-(: run-state (All (S A) (-> (State S A) (-> S (Pair S A)))))
+(: run-state (All (S A) (-> (State S A) (-> S (Pair A S)))))
 (define run-state State-run-state)
 
 (: bind-state (All (S A B) (-> (State S A)  (-> A (State S B)) (State S B))))
 (define (bind-state ma f)
   (State (λ ([s : S])
            (match ((run-state ma) s)
-             [`(,s . ,a) ((run-state (f a)) s)]))))
+             [`(,a . ,s) ((run-state (f a)) s)]))))
 
 (: get (All (S) (-> (State S S))))
 (define (get)
@@ -80,7 +80,7 @@
 
 (: put (All (S) (-> S (State S Unit))))
 (define (put s)
-  (State (λ (_) (cons s (Unit)))))
+  (State (λ (_) (cons (Unit) s))))
 
 (struct (R A) Cont
   ([run-k : (-> (-> A R) R)]))

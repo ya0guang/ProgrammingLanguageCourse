@@ -12,7 +12,13 @@
 
 - Why throw k k => continuation?
 
+## Dependent Type
+
+Why is almost (+ k n)
+
+function equality?
 
 # 10.13
 
 ```
+
